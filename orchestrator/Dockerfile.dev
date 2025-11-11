@@ -1,0 +1,13 @@
+FROM python:3.12-alpine AS development
+
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+WORKDIR /orchestrator
+
+COPY . .
+
+CMD ["python", "orch.py"]
+
+# CMD ["bash", "-c", "watchfiles --filter python 'python orch.py'"]

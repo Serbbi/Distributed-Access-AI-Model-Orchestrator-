@@ -1,0 +1,193 @@
+# workflow:
+#   rules:
+#     - if: '$CI_COMMIT_BRANCH == "develop"'
+#       when: always
+#     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
+#       when: always
+#     - when: never
+
+stages:
+ - build
+ - initialize
+ - deploy
+ - destroy
+
+build_backend:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    - cd backend
+    - docker build -f Dockerfile.prod -t $CI_REGISTRY_IMAGE/backend:latest .
+    - docker push $CI_REGISTRY_IMAGE/backend:latest
+  only:
+    changes:
+      - backend/**/*
+
+build_frontend:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    - cd frontend
+    - docker build --build-arg MASTER_IP=${MASTER_IP} -f dockerfile -t $CI_REGISTRY_IMAGE/frontend:latest .
+    - docker push $CI_REGISTRY_IMAGE/frontend:latest
+  only:
+    changes:
+      - frontend/**/*
+
+build_orchestrator:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    - cd orchestrator
+    - docker build -f Dockerfile.prod -t $CI_REGISTRY_IMAGE/orchestrator:latest .
+    - docker push $CI_REGISTRY_IMAGE/orchestrator:latest
+  only: 
+    changes:
+      - orchestrator/**/*
+
+build_kratos:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    - cd ory-kratos
+    - docker build -f dockerfile -t $CI_REGISTRY_IMAGE/kratos:latest --build-arg FRONTEND_IP=http://${MASTER_IP} .
+    - docker push $CI_REGISTRY_IMAGE/kratos:latest
+  only:
+    changes:
+      - ory-kratos/**/*
+
+build_keto:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    - cd ory-keto
+    - docker build -f dockerfile -t $CI_REGISTRY_IMAGE/keto:latest .
+    - docker push $CI_REGISTRY_IMAGE/keto:latest
+  only:
+    changes:
+      - ory-keto/**/*
+
+create_secrets:
+  stage: initialize
+  image: "registry.gitlab.com/gitlab-org/cluster-integration/cluster-applications:v2.1.0"
+  before_script:
+    - chmod 400 "$KUBECONFIG" 
+  script:
+    - kubectl config get-contexts
+    - kubectl config use-context rug-cs/courses/scalable-computing/2024-2025/students/group-1/group-1-project:agentscalor
+    - |
+      cat <<EOF > kubernetes/rabbitmq/secret.yaml
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: rabbit-secret
+        namespace: default
+      type: Opaque
+      data:
+        rabbitmq-password: $(echo -n $RABBITMQ_PASSWORD | base64)
+      EOF
+    - |
+      cat <<EOF > kubernetes/backend/templates/secret.yaml
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: backend-secret
+        namespace: default
+      type: Opaque
+      data:
+        BACKEND_PORT: $(echo -n $BACKEND_PORT | base64)
+        SPRING_APPLICATION_NAME: $(echo -n $SPRING_APPLICATION_NAME | base64)
+        SPRING_RABBITMQ_HOST: $(echo -n $RABBITMQ_HOST | base64)
+        SPRING_RABBITMQ_PASSWORD: $(echo -n $RABBITMQ_PASSWORD | base64)
+        SPRING_RABBITMQ_USERNAME: $(echo -n $RABBITMQ_USERNAME | base64)
+        RABBIT_MQ_PORT: $(echo -n $RABBITMQ_PORT | base64)
+        MINIO_API_PORT: $(echo -n $MINIO_API_PORT | base64)
+        MINIO_CONSOLE_PORT: $(echo -n $MINIO_CONSOLE_PORT | base64)
+        MINIO_ACCESS_KEY: $(echo -n $MINIO_ACCESS_KEY | base64)
+        MINIO_SECRET_KEY: $(echo -n $MINIO_SECRET_KEY | base64)
+        MINIO_URL: $(echo -n $MINIO_URL | base64)
+        KETO_URL: $(echo -n $ORY_KETO_URL | base64)
+        KETO_PORT: $(echo -n $ORY_KETO_PORT | base64)
+        KRATOS_URL: $(echo -n $ORY_KRATOS_PUBLIC_URL | base64)
+        KRATOS_PUBLIC_PORT: $(echo -n $ORY_KRATOS_PUBLIC_PORT | base64)
+        CASSANDRA_HOST: $(echo -n $CASSANDRA_HOST | base64)
+        CASSANDRA_PORT: $(echo -n $CASSANDRA_PORT | base64)
+        CASSANDRA_USERNAME: $(echo -n $CASSANDRA_USERNAME | base64)
+        CASSANDRA_PASSWORD: $(echo -n $CASSANDRA_PASSWORD | base64)
+        MASTER_IP: $(echo -n $MASTER_IP | base64)
+      EOF
+    - |
+      cat <<EOF > kubernetes/orchestrator/templates/secret.yaml
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: orch-secret
+        namespace: default
+      type: Opaque
+      data:
+        CODE_BLOCKS_EXCHANGE: $(echo -n $CODE_BLOCKS_EXCHANGE | base64)
+        CODE_QUEUE_NAME: $(echo -n $CODE_QUEUE_NAME | base64)
+        LOGS_EXCHANGE: $(echo -n $LOGS_EXCHANGE | base64)
+        LOGS_ROUTING_KEY: $(echo -n $LOGS_ROUTING_KEY | base64)
+        SPRING_RABBITMQ_HOST: $(echo -n $RABBITMQ_HOST | base64)
+        RABBIT_MQ_PORT: $(echo -n $RABBITMQ_PORT | base64)
+        RABBIT_MQ_UI_PORT: $(echo -n $RABBITMQ_UI_PORT | base64)
+        SPRING_RABBITMQ_USERNAME: $(echo -n $RABBITMQ_PASSWORD | base64)
+        SPRING_RABBITMQ_PASSWORD: $(echo -n $RABBITMQ_USERNAME | base64)
+        RABBIT_MQ_VIRTUAL_HOST: Lw==
+      EOF
+    - kubectl apply -f kubernetes/rabbitmq/secret.yaml
+    - kubectl apply -f kubernetes/backend/templates/secret.yaml
+    - kubectl apply -f kubernetes/orchestrator/templates/secret.yaml
+    - kubectl get secret gitlab-registry-secret || kubectl create secret docker-registry gitlab-registry-secret --docker-server=registry.gitlab.com --docker-username=akr115 --docker-password=$SERBAN_PAT --docker-email=$SERBAN_EMAIL
+  rules:
+    - when: always
+  allow_failure: true
+
+
+helm_deploy:
+  stage: deploy
+  image: "registry.gitlab.com/gitlab-org/cluster-integration/cluster-applications:v2.1.0"
+  before_script:
+    - chmod 400 "$KUBECONFIG" 
+  script: 
+    - kubectl config get-contexts
+    - kubectl config use-context rug-cs/courses/scalable-computing/2024-2025/students/group-1/group-1-project:agentscalor
+    - cd kubernetes
+    - gl-ensure-namespace default
+    - gl-helmfile --file $CI_PROJECT_DIR/kubernetes/helmfile.yaml apply
+  rules:
+    - when: always
+  dependencies:
+    - create_secrets
+  allow_failure: true
+
+
+helm_destroy:
+  stage: destroy
+  image: "registry.gitlab.com/gitlab-org/cluster-integration/cluster-applications:v2.1.0"
+  before_script:
+    - chmod 400 "$KUBECONFIG"
+  script:
+    - kubectl config get-contexts
+    - kubectl config use-context rug-cs/courses/scalable-computing/2024-2025/students/group-1/group-1-project:agentscalor
+    - cd kubernetes
+    - gl-ensure-namespace default
+    - gl-helmfile --file $CI_PROJECT_DIR/kubernetes/helmfile.yaml destroy
+  rules:
+    - when: manual

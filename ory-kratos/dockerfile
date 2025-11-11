@@ -1,0 +1,21 @@
+FROM oryd/kratos:latest
+
+ARG FRONTEND_IP=http://localhost:3000
+
+# Copy config files
+COPY kratos-config.yaml /etc/config/kratos.yml
+COPY identity.schema.json /etc/config/identity.schema.json
+
+# Copy and set execution permissions for seed script
+COPY seed/test-seed.sh /usr/local/bin/test-seed.sh
+COPY seed/users.json /usr/local/bin/users.json
+COPY seed/inject_ip.sh inject_ip.sh
+
+USER root
+RUN sed -i "s|\${FRONTEND_URL}|${FRONTEND_IP}|g" /etc/config/kratos.yml
+RUN apk add --no-cache jq curl
+RUN chmod +x /usr/local/bin/test-seed.sh
+RUN chmod +x inject_ip.sh
+
+# Set entrypoint to run seeding before starting Kratos
+ENTRYPOINT ["/bin/sh", "-c", "sleep 5 && cd /usr/local/bin/ && ./test-seed.sh && cd ../../.. & kratos serve --dev -c /etc/config/kratos.yml"]

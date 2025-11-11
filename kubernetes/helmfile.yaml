@@ -1,0 +1,41 @@
+releases:
+ - name: rabbitmq-release
+   namespace: default
+   chart: oci://registry-1.docker.io/bitnamicharts/rabbitmq
+   version: 15.0.1
+   installed: true
+   values: 
+    - rabbitmq/values.yaml
+
+ - name: frontend-release
+   namespace: default
+   chart: frontend
+   installed: true
+
+ - name: kratos
+   namespace: default
+   chart: ory-kratos
+   values:
+    - ory-kratos/values.yaml
+
+ - name: keto
+   namespace: default
+   chart: ory-keto
+   values:
+    - ory-keto/values.yaml
+  
+ - name: backend-release
+   namespace: default
+   chart: backend
+   installed: true
+   needs: [rabbitmq-release]
+
+ - name: orchestrator-release
+   namespace: default
+   chart: orchestrator
+   installed: true
+   needs: [rabbitmq-release]
+
+ - name: middleware-release
+   namespace: default
+   chart: middlewares

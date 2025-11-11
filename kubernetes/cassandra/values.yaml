@@ -1,0 +1,22 @@
+replicaCount: 3
+
+cluster:
+  name: cassandra
+  # endpointSnitch: GossipingPropertyFileSnitch
+  datacenter: datacenter1
+
+service:
+  type: ClusterIP
+  ports:
+    intra: 7000
+    tls: 7001
+    jmx: 7199
+    cql: 9042
+
+podSecurityContext:
+  enabled: false
+
+dbUser:
+  user: cassandra
+  forcePassword: false
+  password: cassandra

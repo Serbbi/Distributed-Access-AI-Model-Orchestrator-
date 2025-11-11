@@ -1,0 +1,68 @@
+version: v1.3.1
+dsn: memory
+
+# API endpoints to handle ory-kratos requests
+serve:
+    # Used for public API requests e.g. login, logout 
+  public:
+    base_url: ${FRONTEND_URL}
+    cors:
+      enabled: true
+      allowed_origins:
+        - ${FRONTEND_URL}
+        - http://localhost:8080
+        - http://backend:8080
+        - http://localhost:3000
+        - http://aerrus.com
+        - http://www.aerrus.com
+      allowed_methods:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+      allowed_headers:
+        - Authorization
+        - Content-Type
+        - Max-Age
+        - X-Session-Token
+        - X-XSRF-TOKEN
+        - X-CSRF-TOKEN
+      exposed_headers:
+        - Content-Type
+        - Location
+      allow_credentials: true
+  # API requests e.g. give permissions
+  admin:
+    base_url: http://localhost:4434/
+
+identity:
+  default_schema_id: user
+  schemas:
+    - id: user
+      url: file:///etc/config/identity.schema.json
+
+selfservice:
+  default_browser_return_url: ${FRONTEND_URL}
+  flows:
+    logout:
+      after:
+        default_browser_return_url: ${FRONTEND_URL}/login
+
+    error:
+      ui_url: ${FRONTEND_URL}/login-error
+
+    login:
+      lifespan: 1h
+      ui_url: ${FRONTEND_URL}/login
+
+    registration:
+      lifespan: 1h
+      login_hints: false
+      ui_url: ${FRONTEND_URL}/register
+
+    verification:
+      lifespan: 1h
+      notify_unknown_recipients: false
+      ui_url: ${FRONTEND_URL}/verification
+      use: code

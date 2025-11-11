@@ -1,0 +1,30 @@
+# Modified from own code used for Cloud Computing
+
+FROM node:18-bullseye AS BUILD
+
+ARG MASTER_IP
+
+WORKDIR /frontend
+
+COPY package*.json ./
+
+RUN npm install
+
+COPY . .
+
+RUN echo "Generating runtime-config.js..." && \
+  echo 'window.env = {' > /frontend/public/runtime-config.js && \
+  echo '  MASTER_IP: "'"${MASTER_IP}"'",' >> /frontend/public/runtime-config.js && \
+  echo '};' >> /frontend/public/runtime-config.js
+
+RUN npm run build
+
+FROM node:18-bullseye AS DEPLOY
+
+COPY --from=BUILD /frontend ./
+
+ENV NODE_ENV=production
+
+EXPOSE 3000
+
+CMD ["npm", "run", "start"]

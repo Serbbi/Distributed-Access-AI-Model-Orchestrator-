@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cassandra-init
+spec:
+  template:
+    spec:
+      containers:
+      - name: cassandra-init
+        image: bitnami/cassandra:latest
+        command: ["/bin/bash", "/scripts/init-cassandra.sh"]
+        volumeMounts:
+        - name: init-script
+          mountPath: /scripts
+        env:
+        - name: CQLSH_HOST
+          value: "cassandra-release.default.svc.cluster.local"
+        - name: CQLSH_USER
+          value: "cassandra"
+        - name: CQLSH_PASSWORD
+          value: "cassandra"
+      volumes:
+      - name: init-script
+        configMap:
+          name: cassandra-init
+      restartPolicy: OnFailure

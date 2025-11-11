@@ -1,0 +1,13 @@
+FROM eclipse-temurin:17-jdk-jammy AS development
+
+WORKDIR /backend
+
+RUN chmod +x ./gradlew
+
+CMD ["./gradlew", "clean", "bootJar"]
+
+COPY . .
+
+EXPOSE 3009
+
+CMD ["./gradlew", "bootRun"]

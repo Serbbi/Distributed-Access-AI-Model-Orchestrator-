@@ -1,0 +1,38 @@
+[
+  {
+    "traits": {
+      "email": "admin@example.com"
+    },
+    "credentials": {
+      "password": {
+        "config": {
+          "password": "asdASD123!@#?"
+        }
+      }
+    }
+  },
+  {
+    "traits": {
+      "email": "member1@example.com"
+    },
+    "credentials": {
+      "password": {
+        "config": {
+          "password": "asdASD123!@#?"
+        }
+      }
+    }
+  },
+  {
+    "traits": {
+      "email": "member2@example.com"
+    },
+    "credentials": {
+      "password": {
+        "config": {
+          "password": "asdASD123!@#?"
+        }
+      }
+    }
+  }
+]

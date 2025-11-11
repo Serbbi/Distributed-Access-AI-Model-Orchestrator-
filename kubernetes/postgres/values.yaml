@@ -1,0 +1,5 @@
+auth:
+  user: "serban"
+  password: "serban"
+  postgresPassword: "serban"
+  database: "db"

@@ -1,0 +1,21 @@
+#Build Stage
+FROM eclipse-temurin:17-jdk-jammy AS build
+
+WORKDIR /backend
+
+COPY . .
+
+RUN chmod +x ./gradlew
+
+RUN ./gradlew clean bootJar
+
+#Run Stage
+FROM eclipse-temurin:17-jdk-jammy AS production
+
+WORKDIR /backend
+
+COPY --from=build /backend/build/libs/*.jar /backend/app.jar
+
+COPY model.zip /backend/model.zip
+
+CMD ["java", "-jar", "/backend/app.jar"]

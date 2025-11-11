@@ -1,0 +1,17 @@
+FROM oryd/keto:v0.11.0
+
+# Copy config files
+COPY config.yaml /etc/config/config.yml
+
+# Copy and set execution permissions for seed script
+COPY seed/test-seed.sh /usr/local/bin/test-seed.sh
+COPY seed/relations.json /usr/local/bin/relations.json
+
+RUN ls -l /usr/local/bin/
+
+USER root
+RUN apk add --no-cache jq curl
+RUN chmod +x /usr/local/bin/test-seed.sh
+
+# Set entrypoint to run seeding before starting Keto
+ENTRYPOINT ["/bin/sh", "-c", "sleep 5 && cd /usr/local/bin/ && ./test-seed.sh && cd ../../.. & keto serve -c /etc/config/config.yml"]

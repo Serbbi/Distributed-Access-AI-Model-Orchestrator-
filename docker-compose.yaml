@@ -1,0 +1,137 @@
+services:
+  backend:
+    container_name: backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    env_file: ./.env
+    environment:
+      KETO_URL: "${KETO_URL}"
+      KRATOS_URL: "${KRATOS_URL}"
+    ports:
+      - "${BACKEND_PORT}:${BACKEND_PORT}"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      # rabbitmq:
+      cassandra:
+        condition: service_healthy
+    networks:
+      - internal
+
+  orchestrator:
+    container_name: orchestrator
+    restart: always
+    build:
+      context: ./orchestrator
+      dockerfile: Dockerfile.prod
+    depends_on:
+      - rabbitmq # condition: service_healthy # Check that rabbitmq is up and running before trying to connect to it
+    env_file: ./.env
+    volumes:
+      - ./orchestrator:/orchestrator
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - internal
+
+  rabbitmq:
+    image: "rabbitmq:3-management"
+    restart: always # Automatically restart the container if it stops
+    hostname: rabbitmq # Assign a hostname to the container, useful for internal networking
+    env_file: ./.env
+    ports:
+      - "${RABBIT_MQ_PORT}:${RABBIT_MQ_PORT}" # Expose RabbitMQ's message broker port
+      - "${RABBIT_MQ_UI_PORT}:${RABBIT_MQ_UI_PORT}" # Expose RabbitMQ's management UI port
+    healthcheck:
+      # Added this as a way to tell the Orchestrator that the rabbitmq is up and running
+      test: [ "CMD", "rabbitmqctl", "status" ]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+    networks:
+      - internal
+
+  minio:
+    image: "quay.io/minio/minio"
+    container_name: minio
+    ports:
+      - "${MINIO_API_PORT}:${MINIO_API_PORT}" # MinIO API
+      - "${MINIO_CONSOLE_PORT}:${MINIO_CONSOLE_PORT}" # MinIO Console
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    command: server /data --console-address ":${MINIO_CONSOLE_PORT}"
+    networks:
+      - internal
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: dockerfile
+      args:
+        - MASTER_IP=${BACKEND_URL}
+    container_name: frontend
+    environment:
+      - MASTER_IP=${BACKEND_URL}
+    networks:
+      - internal
+    ports:
+      - 3000:3000
+
+  kratos:
+    build:
+      context: ./ory-kratos
+      dockerfile: dockerfile
+      args:
+        - FRONTEND_IP=${BACKEND_URL}
+    container_name: ory-kratos
+    networks:
+      - internal
+    ports:
+      - "4433:4433"
+      - "4434:4434"
+
+  keto:
+    restart: unless-stopped
+    build:
+      context: ./ory-keto
+      dockerfile: dockerfile
+    networks:
+      - internal
+    ports:
+      - "4466:4466"
+      - "4467:4467"
+
+  cassandra:
+    image: cassandra:4.1 # Use the latest stable version
+    container_name: cassandra
+    ports:
+      - "9042:9042" # CQL native transport port
+    volumes:
+      - cassandra_data:/var/lib/cassandra # Persist data to a volume
+    environment:
+      - CASSANDRA_CLUSTER_NAME=MyCassandraCluster # Custom cluster name
+      - SPRING_DATA_CASSANDRA_KEYSPACE_NAME=mykeyspace
+      - CASSANDRA_DC=datacenter1 # Datacenter name
+      - CASSANDRA_USERNAME=cassandra_user # Custom username
+      - CASSANDRA_PASSWORD=cassandra_password # Custom password
+      - MASTER_IP=${BACKEND_URL}
+
+    networks:
+      - internal
+    healthcheck:
+      test: [ "CMD-SHELL", "cqlsh -u cassandra_user -p cassandra_password -e 'DESCRIBE keyspaces'" ]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+
+volumes:
+  cassandra_data:
+  minio_data:
+    driver: local
+
+networks:
+  internal:
+    driver: bridge

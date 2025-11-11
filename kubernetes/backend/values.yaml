@@ -1,0 +1,145 @@
+# Default values for backend.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 3
+
+port: 8080
+
+image:
+  repository: registry.gitlab.com/rug-cs/courses/scalable-computing/2024-2025/students/group-1/group-1-project/backend
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"
+
+imagePullSecrets:
+  - name: gitlab-registry-secret
+# nameOverride: "backend"
+# fullnameOverride: "backend"
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+ingress:
+  enabled: false
+  className: "traefik"
+  annotations: {}
+  hosts:
+    - host: 
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: backend       
+            port:
+              number: 8080
+
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+livenessProbe:
+  httpGet:
+    path: /hello
+    port: 8080
+readinessProbe:
+  httpGet:
+    path: /hello
+    port: 8080
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# Additional volumes on the output Deployment definition.
+volumes: []
+# - name: foo
+#   secret:
+#     secretName: mysecret
+#     optional: false
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+# - name: foo
+#   mountPath: "/etc/foo"
+#   readOnly: true
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+env:
+  envVars:
+    - BACKEND_PORT
+    - SPRING_APPLICATION_NAME
+    - SPRING_RABBITMQ_HOST
+    - SPRING_RABBITMQ_PASSWORD
+    - SPRING_RABBITMQ_USERNAME
+    - RABBIT_MQ_PORT
+    - MINIO_API_PORT
+    - MINIO_CONSOLE_PORT
+    - MINIO_ACCESS_KEY
+    - MINIO_SECRET_KEY
+    - MINIO_URL
+    - CASSANDRA_HOST
+    - CASSANDRA_PORT
+    - CASSANDRA_USERNAME
+    - CASSANDRA_PASSWORD
+    - KETO_URL
+    - KETO_PORT
+    - KRATOS_URL
+    - KRATOS_PUBLIC_PORT
+    - MASTER_IP
+    - CASSANDRA_HOST
+    - CASSANDRA_PORT
+    - CASSANDRA_USERNAME
+    - CASSANDRA_PASSWORD
+
+
+  envName: backend-secret

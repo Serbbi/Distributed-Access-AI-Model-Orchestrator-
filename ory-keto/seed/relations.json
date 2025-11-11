@@ -1,0 +1,70 @@
+[
+  {
+    "namespace": "system",
+    "object": "global",
+    "relation": "admin",
+    "subject_id": "user:admin@example.com"
+  },
+  {
+    "namespace": "organization",
+    "object": "org:group-1",
+    "relation": "admin",
+    "subject_set": {
+      "namespace": "system",
+      "object": "global",
+      "relation": "admin"
+    }
+  },
+  {
+    "namespace": "organization",
+    "object": "org:group-1",
+    "relation": "member",
+    "subject_id": "user:admin@example.com"
+  },
+  {
+    "namespace": "organization",
+    "object": "org:group-1",
+    "relation": "member",
+    "subject_id": "user:member1@example.com"
+  },
+  {
+    "namespace": "organization",
+    "object": "org:group-1",
+    "relation": "member",
+    "subject_id": "user:member2@example.com"
+  },
+  {
+    "namespace": "resource",
+    "object": "models:seed1",
+    "relation": "access",
+    "subject_set": {
+      "namespace": "organization",
+      "object": "org:group-1",
+      "relation": "member"
+    }
+  },
+  {
+    "namespace": "resource",
+    "object": "data:seed2",
+    "relation": "access",
+    "subject_id": "user:member1@example.com"
+  },
+  {
+    "namespace": "resource",
+    "object": "data:seed2",
+    "relation": "access",
+    "subject_id": "user:admin@example.com"
+  },
+  {
+    "namespace": "resource",
+    "object": "data:seed3",
+    "relation": "access",
+    "subject_id": "user:member2@example.com"
+  },
+  {
+    "namespace": "resource",
+    "object": "data:seed3",
+    "relation": "access",
+    "subject_id": "user:admin@example.com"
+  }
+]
